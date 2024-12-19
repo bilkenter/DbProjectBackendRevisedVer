@@ -344,3 +344,20 @@ CREATE TABLE IF NOT EXISTS BookmarkList(
   FOREIGN KEY (user_id) REFERENCES AppUser(user_id) ON DELETE CASCADE 
 )
 
+
+/*
+Review has relation with:
+  Buyer: One Buyer can issue many Reviews
+  Seller: One Seller can have many Reviews
+*/
+CREATE TABLE IF NOT EXISTS Review(
+  review_id SERIAL,
+  reviewing_id INT NOT NULL,
+  reviewed_id INT NOT NULL,
+  rating INT NOT NULL CHECK(rating >= 1 AND rating <= 5),
+  comment TEXT NOT NULL,
+  review_date DATE DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (review_id),
+  FOREIGN KEY (reviewing_id) REFERENCES Buyer(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewed_id) REFERENCES Seller(user_id) ON DELETE CASCADE
+);
