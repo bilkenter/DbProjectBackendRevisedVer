@@ -14,10 +14,13 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# project/urls.py (the root URLs file)
+# my_tennis_club/urls.py
+
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('users/', include('users.urls'))
+    path('', include('users.urls')),  # Redirects the root to the 'users' app URLs
+    path('admin/', admin.site.urls),   # Default admin route
 ]
