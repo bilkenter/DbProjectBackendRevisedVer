@@ -331,3 +331,16 @@ CREATE TABLE IF NOT EXISTS Image(
   FOREIGN KEY (ad_id) REFERENCES Ad(ad_id)
 );
 
+/*
+BookmarkList has relation with:
+  AppUser: One AppUser can have many BookmarkLists
+  Ad: Many Ads can exist in Many BookMarkLists (MANY TO MANY RELATION)
+*/
+CREATE TABLE IF NOT EXISTS BookmarkList(
+  bookmark_id SERIAL,
+  user_id INT NOT NULL,
+  list_name VARCHAR(50) NOT NULL,
+  PRIMARY KEY (bookmark_id),
+  FOREIGN KEY (user_id) REFERENCES AppUser(user_id) ON DELETE CASCADE 
+)
+
