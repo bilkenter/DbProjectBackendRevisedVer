@@ -7,7 +7,7 @@ User has relation with:
 CREATE TABLE IF NOT EXISTS UserAccount (
     user_id SERIAL,
     username VARCHAR(50) NOT NULL UNIQUE,
-    pass VARCHAR(50) NOT NULL,
+    pass VARCHAR(250) NOT NULL,
     email VARCHAR(50) NOT NULL UNIQUE,
     PRIMARY KEY (user_id)
 );

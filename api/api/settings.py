@@ -83,7 +83,7 @@ DATABASES = {
         'NAME': 'secondwheel',
         'USER': 'admin',
         'PASSWORD': '123',
-        'HOST': 'postgres',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }

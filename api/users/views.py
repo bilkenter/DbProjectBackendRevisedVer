@@ -26,7 +26,7 @@ def signup(request):
             with get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("""
-                        INSERT INTO SWUser (username, pass, email)
+                        INSERT INTO UserAccount (username, pass, email)
                         VALUES (%s, %s, %s)
                         RETURNING user_id;
                     """, (username, hashed_password.decode('utf-8'), email))  # store the hashed password as string
@@ -59,7 +59,7 @@ def login(request):
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
                         SELECT user_id, username, email, pass
-                        FROM SWUser
+                        FROM UserAccount
                         WHERE username = %s;
                     """, (username,))
                     user = cursor.fetchone()
