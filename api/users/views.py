@@ -14,9 +14,13 @@ def signup(request):
             username = data['username']
             password = data['password']
             email = data['email']
+            #phone_number = data['phone_number']
+            user_type = data['userType']
+            notificationPreference = data['notificationPreference']
 
             # Validate inputs
-            if not username or not password or not email:
+            """if not username or not password or not email or not phone_number or not user_type or not notification_preferences:"""
+            if not username or not password or not email or not user_type or not notificationPreference:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             # Hash the password using bcrypt
@@ -25,12 +29,44 @@ def signup(request):
             # Insert user into the database
             with get_connection() as conn:
                 with conn.cursor() as cursor:
+                    # Insert into UserAccount table
                     cursor.execute("""
                         INSERT INTO UserAccount (username, pass, email)
                         VALUES (%s, %s, %s)
                         RETURNING user_id;
                     """, (username, hashed_password.decode('utf-8'), email))  # store the hashed password as string
                     new_user_id = cursor.fetchone()[0]
+
+                    # Insert into AppUser table for all users
+                    cursor.execute("""
+                        INSERT INTO AppUser (user_id, notification_preference)
+                        VALUES (%s, %s);
+                    """, (new_user_id, notificationPreference))
+
+                    # Add user type relationship
+                    if user_type == "Admin":
+                        cursor.execute("""
+                            INSERT INTO AdminAccount (user_id) 
+                            VALUES (%s);
+                        """, (new_user_id,))
+                    elif user_type == "Moderator":
+                        cursor.execute("""
+                            INSERT INTO Moderator (user_id)
+                            VALUES (%s);
+                        """, (new_user_id,))
+                    elif user_type == "Buyer":
+                        cursor.execute("""
+                            INSERT INTO Buyer (user_id)
+                            VALUES (%s);
+                        """, (new_user_id,))
+                    elif user_type == "Seller":
+                        cursor.execute("""
+                            INSERT INTO Seller (user_id)
+                            VALUES (%s);
+                        """, (new_user_id,))
+                    else:
+                        return JsonResponse({'error': 'Invalid user type'}, status=400)
+
                     conn.commit()
 
             return JsonResponse({'message': 'User registered successfully', 'user_id': new_user_id}, status=201)
@@ -40,7 +76,6 @@ def signup(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
-
 
 @csrf_exempt
 def login(request):
