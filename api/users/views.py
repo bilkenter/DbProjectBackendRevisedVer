@@ -82,11 +82,11 @@ def login(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            username = data['username']
+            email = data['email']
             password = data['password']
 
             # Validate inputs
-            if not username or not password:
+            if not email or not password:
                 return JsonResponse({'error': 'Missing username or password'}, status=400)
 
             # Check credentials
@@ -95,8 +95,8 @@ def login(request):
                     cursor.execute("""
                         SELECT user_id, username, email, pass
                         FROM UserAccount
-                        WHERE username = %s;
-                    """, (username,))
+                        WHERE email = %s;
+                    """, (email,))
                     user = cursor.fetchone()
 
             if user:
