@@ -208,3 +208,43 @@ def get_all_cars(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+@csrf_exempt
+def get_all_users(request):
+    if request.method == 'GET':
+        try:
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Query to get all users with their type, notification preference, and if they are a seller, their car IDs
+                    cursor.execute("""
+                        SELECT u.user_id, u.username, u.email, a.notification_preference, 
+                               CASE 
+                                   WHEN s.user_id IS NOT NULL THEN 'Seller' 
+                                   WHEN b.user_id IS NOT NULL THEN 'Buyer'
+                                   WHEN m.user_id IS NOT NULL THEN 'Moderator'
+                                   WHEN admin.user_id IS NOT NULL THEN 'Admin'
+                                   ELSE 'Unknown'
+                               END AS user_type,
+                               COALESCE(array_agg(v.vehicle_id), '{}'::int[]) AS car_ids
+                        FROM UserAccount u
+                        LEFT JOIN AppUser a ON u.user_id = a.user_id
+                        LEFT JOIN Seller s ON u.user_id = s.user_id
+                        LEFT JOIN Buyer b ON u.user_id = b.user_id
+                        LEFT JOIN Moderator m ON u.user_id = m.user_id
+                        LEFT JOIN AdminAccount admin ON u.user_id = admin.user_id
+                        LEFT JOIN Ad ad ON u.user_id = ad.user_id
+                        LEFT JOIN Vehicle v ON ad.vehicle_id = v.vehicle_id
+                        GROUP BY u.user_id, a.notification_preference, s.user_id, b.user_id, m.user_id, admin.user_id;
+                    """)
+                    users = cursor.fetchall()
+
+            if users:
+                return JsonResponse({'users': users}, status=200)
+            else:
+                return JsonResponse({'message': 'No users found'}, status=404)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
