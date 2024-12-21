@@ -134,9 +134,10 @@ def create_vehicle_ad(request):
             location = data['location']
             description = data['description']
             user_id = data['user_id']  # The logged-in seller's user_id
+            vehicle_type = data['vehicle_type']  # The type of vehicle: 'Car', 'Motorcycle', or 'Van'
             
             # Validate required fields
-            if not all([brand, model_name, year, mileage, motor_power, price, location, description]):
+            if not all([brand, model_name, year, mileage, motor_power, price, location, description, vehicle_type]):
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
             
             # Insert vehicle into Vehicle table
@@ -150,6 +151,33 @@ def create_vehicle_ad(request):
                     """, (brand, model_name, year, mileage, motor_power, fuel_type, fuel_tank_capacity, transmission_type,
                           body_type, color))
                     vehicle_id = cursor.fetchone()[0]
+                    
+                    # Insert additional vehicle data depending on vehicle type
+                    if vehicle_type == "Car":
+                        number_of_doors = data['number_of_doors']
+                        cursor.execute("""
+                            INSERT INTO Car (vehicle_id, number_of_doors)
+                            VALUES (%s, %s);
+                        """, (vehicle_id, number_of_doors))
+                    elif vehicle_type == "Motorcycle":
+                        wheel_number = data['wheel_number']
+                        cylinder_volume = data['cylinder_volume']
+                        has_basket = data['has_basket']
+                        cursor.execute("""
+                            INSERT INTO Motorcycle (vehicle_id, wheel_number, cylinder_volume, has_basket)
+                            VALUES (%s, %s, %s, %s);
+                        """, (vehicle_id, wheel_number, cylinder_volume, has_basket))
+                    elif vehicle_type == "Van":
+                        seat_number = data['seat_number']
+                        roof_height = data['roof_height']
+                        cabin_space = data['cabin_space']
+                        has_sliding_door = data['has_sliding_door']
+                        cursor.execute("""
+                            INSERT INTO Van (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door)
+                            VALUES (%s, %s, %s, %s, %s);
+                        """, (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door))
+                    else:
+                        return JsonResponse({'error': 'Invalid vehicle type'}, status=400)
                     
                     # Insert ad into Ad table
                     cursor.execute("""
