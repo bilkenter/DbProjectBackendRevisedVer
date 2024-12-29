@@ -1,6 +1,6 @@
 --if a mod has a report that is in open or in progress assigned to them
 --prevent removal of that mod
-CREATE OR REPLACE FUNCTION prevent_mod_deletion_with_active_reports()
+CREATE OR REPLACE FUNCTION prevent_mod_delete_with_active_reports()
 RETURNS TRIGGER AS $$
 BEGIN
   IF EXISTS (
@@ -14,7 +14,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_prevent_moderator_deletion_with_active_reports
+CREATE TRIGGER trg_prevent_mod_delete_with_active_reports
 BEFORE DELETE ON Moderator
 FOR EACH ROW
-EXECUTE FUNCTION prevent_mod_deletion_with_active_reports();
+EXECUTE FUNCTION prevent_mod_delete_with_active_reports();

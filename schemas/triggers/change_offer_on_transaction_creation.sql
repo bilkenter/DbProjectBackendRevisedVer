@@ -1,6 +1,6 @@
 --after insert on Transaction
 --update the corresponding price offer status to be accepted
-CREATE OR REPLACE FUNCTION change_offer_on_transaction_creation()
+CREATE OR REPLACE FUNCTION change_offer_on_transaction_create()
 RETURNS TRIGGER AS $$
 BEGIN
   UPDATE PriceOffer
@@ -10,7 +10,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_change_offer_on_transaction_creation
+CREATE TRIGGER trg_change_offer_on_transaction_create
 AFTER INSERT ON Transact
 FOR EACH ROW
-EXECUTE FUNCTION change_offer_on_transaction_creation();
+EXECUTE FUNCTION change_offer_on_transaction_create();

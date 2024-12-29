@@ -10,7 +10,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_prevent_offer_price_update_after_acceptance
+CREATE TRIGGER trg_prevent_price_update_after_accept
 BEFORE UPDATE ON PriceOffer
 FOR EACH ROW
 EXECUTE FUNCTION prevent_price_update_after_accept();

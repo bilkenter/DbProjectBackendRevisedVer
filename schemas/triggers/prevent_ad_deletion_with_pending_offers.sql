@@ -1,6 +1,6 @@
 --before delete on ad
 --prevent deletion if there is an unresolved offer associated with the ad
-CREATE OR REPLACE FUNCTION prevent_ad_deletion_with_pending_offers()
+CREATE OR REPLACE FUNCTION prevent_ad_delete_with_pending_offers()
 RETURNS TRIGGER AS $$
 BEGIN
   IF EXISTS (
@@ -14,7 +14,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_prevent_ad_deletion_with_pending_offers
+CREATE TRIGGER trg_prevent_ad_delete_with_pending_offers
 BEFORE DELETE ON Ad
 FOR EACH ROW
-EXECUTE FUNCTION prevent_ad_deletion_with_pending_offers();
+EXECUTE FUNCTION prevent_ad_delete_with_pending_offers();

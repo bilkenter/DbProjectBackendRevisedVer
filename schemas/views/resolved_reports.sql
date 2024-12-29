@@ -1,4 +1,5 @@
 --view for mod to see reports in resolved status
+CREATE OR REPLACE VIEW resolved_reports AS
 SELECT
   r.report_id,
   r.ad_id,
@@ -18,4 +19,4 @@ JOIN
   Vehicle v
     ON a.vehicle_id = v.vehicle_id
 WHERE
-  r.report_status = 'resolved';
+  r.status = 'resolved';

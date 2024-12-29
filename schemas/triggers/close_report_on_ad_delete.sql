@@ -12,7 +12,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_close_reports_on_ad_deletion
+CREATE TRIGGER trg_close_report_on_ad_delete
 AFTER DELETE ON Ad
 FOR EACH ROW
 EXECUTE FUNCTION close_report_on_ad_delete();

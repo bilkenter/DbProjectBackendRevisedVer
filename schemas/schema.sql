@@ -342,7 +342,7 @@ CREATE TABLE IF NOT EXISTS BookmarkList(
   list_name VARCHAR(50) NOT NULL,
   PRIMARY KEY (bookmark_id),
   FOREIGN KEY (user_id) REFERENCES AppUser(user_id) ON DELETE CASCADE
-)
+);
 
 /*
   to capture many to many relationship between BookMarkList and Ad
