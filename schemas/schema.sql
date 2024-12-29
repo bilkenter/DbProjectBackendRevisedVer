@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS Report(
   report_reason text NOT NULL,
   status report_status NOT NULL DEFAULT 'open',
   report_date DATE DEFAULT CURRENT_TIMESTAMP,
-  resolution_date DATE NOT NULL,
+  resolution_date DATE,
   resolution_note text NOT NULL,
   PRIMARY KEY (report_id),
   FOREIGN KEY (moderator_id) REFERENCES UserAccount(user_id),
@@ -341,6 +341,30 @@ CREATE TABLE IF NOT EXISTS BookmarkList(
   user_id INT NOT NULL,
   list_name VARCHAR(50) NOT NULL,
   PRIMARY KEY (bookmark_id),
-  FOREIGN KEY (user_id) REFERENCES AppUser(user_id) ON DELETE CASCADE 
+  FOREIGN KEY (user_id) REFERENCES AppUser(user_id) ON DELETE CASCADE
 )
+
+/*
+  to capture many to many relationship between BookMarkList and Ad
+*/
+CREATE TABLE IF NOT EXISTS BookmarkListAd (
+    bookmark_id INT NOT NULL,
+    ad_id INT NOT NULL,
+    PRIMARY KEY (bookmark_id, ad_id),
+    FOREIGN KEY (bookmark_id) REFERENCES BookmarkList(bookmark_id) ON DELETE CASCADE,
+    FOREIGN KEY (ad_id) REFERENCES Ad(ad_id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS Review (
+    review_id SERIAL,
+    buyer_id INT NOT NULL,
+    seller_id INT NOT NULL,
+    comment TEXT NOT NULL,
+    rating DECIMAL(3, 2) NOT NULL CHECK (rating >= 0 AND rating <= 5),
+    review_date DATE DEFAULT CURRENT_DATE,
+    PRIMARY KEY (review_id),
+    FOREIGN KEY (buyer_id) REFERENCES Buyer(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (seller_id) REFERENCES Seller(user_id) ON DELETE CASCADE
+);
 
