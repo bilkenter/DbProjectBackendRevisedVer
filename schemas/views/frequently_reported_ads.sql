@@ -7,6 +7,6 @@ SELECT
 FROM
   Report r
 WHERE
-  r.report_status = 'open'
+  r.status = 'open'
 GROUP BY
   r.ad_id;

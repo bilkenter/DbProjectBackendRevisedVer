@@ -11,6 +11,6 @@ FROM
   Review r
 JOIN
   Seller s
-    ON r.user_id = s.user_id
+    ON r.seller_id = s.user_id
 GROUP BY
   s.user_id;

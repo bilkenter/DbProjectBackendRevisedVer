@@ -8,7 +8,7 @@ SELECT
   v.brand AS vehicle_brand,
   v.model_name AS vehicle_model,
   r.report_reason,
-  r.report_status,
+  r.status,
   r.report_date,
   r.moderator_id, --can be used for admins and mods to filter mods
   ua.username AS moderator_username
@@ -24,4 +24,4 @@ JOIN
   UserAccount ua
     ON r.moderator_id = ua.user_id
 WHERE
-  r.report_status IN ('open', 'in_progress');
+  r.status IN ('open', 'in_progress');

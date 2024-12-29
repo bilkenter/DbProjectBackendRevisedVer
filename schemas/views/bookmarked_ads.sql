@@ -1,7 +1,8 @@
 --view for buyer to see his bookmark
+CREATE OR REPLACE VIEW bookmarked_ads AS
 SELECT
   b.user_id AS buyer_id, --for filter
-  a.ad_id,
+  bla.ad_id,
   v.brand,
   v.model_name,
   v.year,
@@ -13,8 +14,11 @@ SELECT
 FROM
   BookmarkList b
 JOIN
+  BookmarkListAd bla
+    ON b.bookmark_id = bla.bookmark_id
+JOIN
   Ad a
-    ON b.ad_id = a.ad_id
+    ON bla.ad_id = a.ad_id
 JOIN
   Vehicle v
     ON a.vehicle_id = v.vehicle_id;

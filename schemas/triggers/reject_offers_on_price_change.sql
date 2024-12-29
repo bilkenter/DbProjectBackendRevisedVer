@@ -13,7 +13,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_auto_reject_offers_on_price_change
+CREATE TRIGGER trg_reject_offers_on_price_change
 AFTER UPDATE OF price ON Ad
 FOR EACH ROW
 EXECUTE FUNCTION reject_offers_on_price_change();

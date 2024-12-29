@@ -17,4 +17,4 @@ JOIN
   UserAccount ua
     ON r.reporter_id = ua.user_id
 WHERE
-  r.report_status = 'open';
+  r.status = 'open';

@@ -2,7 +2,7 @@
 -- dont let any updates here because
 -- transaction table is reserved for price offers that are accepted
 -- we wont let any changes to transaction only inserts after an offer is accepted
-CREATE OR REPLACE FUNCTION prevent_transaction_updates()
+CREATE OR REPLACE FUNCTION prevent_transaction_update()
 RETURNS TRIGGER AS $$
 BEGIN
   RAISE EXCEPTION 'Transactions cannot be updated once created.';
@@ -10,7 +10,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_prevent_transaction_updates
+CREATE TRIGGER trg_prevent_transaction_update
 BEFORE UPDATE ON Transact
 FOR EACH ROW
-EXECUTE FUNCTION prevent_transaction_updates();
+EXECUTE FUNCTION prevent_transaction_update();

@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:latest
@@ -10,8 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./schemas:/docker-entrypoint-initdb.d:ro #bind mount schema for auto initialization
-
+      - ./schemas:/docker-entrypoint-initdb.d:ro # Mount schemas directory
 
   pgadmin:
     image: dpage/pgadmin4:latest
