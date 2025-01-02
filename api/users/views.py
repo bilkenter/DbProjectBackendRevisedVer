@@ -264,7 +264,6 @@ def get_all_users(request):
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
 
-
 @csrf_exempt
 def get_user_data(request):
     if request.method == 'GET':
@@ -275,13 +274,24 @@ def get_user_data(request):
             if not user_id:
                 return JsonResponse({'error': 'User ID is required'}, status=400)
 
-            # Fetch user data from the database
+            # Fetch user data along with user type from the database
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
-                        SELECT username, email, user_id
-                        FROM UserAccount
-                        WHERE user_id = %s;
+                        SELECT u.username, u.email, u.user_id,
+                               CASE
+                                   WHEN s.user_id IS NOT NULL THEN 'Seller'
+                                   WHEN b.user_id IS NOT NULL THEN 'Buyer'
+                                   WHEN m.user_id IS NOT NULL THEN 'Moderator'
+                                   WHEN admin.user_id IS NOT NULL THEN 'Admin'
+                                   ELSE 'Unknown'
+                               END AS user_type
+                        FROM UserAccount u
+                        LEFT JOIN Seller s ON u.user_id = s.user_id
+                        LEFT JOIN Buyer b ON u.user_id = b.user_id
+                        LEFT JOIN Moderator m ON u.user_id = m.user_id
+                        LEFT JOIN AdminAccount admin ON u.user_id = admin.user_id
+                        WHERE u.user_id = %s;
                     """, (user_id,))
                     user = cursor.fetchone()
 
@@ -343,6 +353,48 @@ def delete_ad(request, ad_id):
                 return JsonResponse({'message': 'Ad deleted successfully'}, status=200)
             else:
                 return JsonResponse({'error': 'Ad not found'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .db_utils import get_connection
+from psycopg2.extras import RealDictCursor
+
+@csrf_exempt
+def get_car_details(request, ad_id):
+    if request.method == 'GET':
+        try:
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT
+                            ad.ad_id,
+                            ad.price,
+                            ad.location,
+                            ad.description,
+                            ad.posting_date,
+                            vehicle.brand,
+                            vehicle.model_name,
+                            vehicle.year,
+                            vehicle.mileage,
+                            vehicle.motor_power,
+                            vehicle.fuel_type,
+                            vehicle.fuel_tank_capacity,
+                            vehicle.transmission_type,
+                            vehicle.body_type,
+                            vehicle.color
+                        FROM Ad ad
+                        JOIN Vehicle vehicle ON ad.vehicle_id = vehicle.vehicle_id
+                        WHERE ad.ad_id = %s AND ad.status = 'available';
+                    """, (ad_id,))
+                    car = cursor.fetchone()
+
+            if car:
+                return JsonResponse(car, status=200)
+            else:
+                return JsonResponse({'error': 'Car not found or unavailable'}, status=404)
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
