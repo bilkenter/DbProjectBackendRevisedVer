@@ -9,7 +9,7 @@ urlpatterns = [
     path('get_all_cars/', views.get_all_cars, name='get_all_cars'),  # Add this line
     path('get_all_users/', views.get_all_users, name='get_all_users'),  # Add this line
     path('get_seller_ads/', views.get_seller_ads, name='get_seller_ads'),  # Add this line
-    path('delete_ad/', views.delete_ad, name='delete_ad'),  # Add this line
+    path('delete_ad/<int:ad_id>/', views.delete_ad, name='delete_ad'),
     path('get_user_data/', views.get_user_data, name='get_user_data'),  # Add this line
 
 ]

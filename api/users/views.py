@@ -294,10 +294,8 @@ def get_user_data(request):
             print(e)
             return JsonResponse({'error': str(e)}, status=500)
 
-
 @csrf_exempt
 def get_seller_ads(request):
-    
     if request.method == 'GET':
         try:
             # Get user_id from the query parameters
@@ -320,7 +318,8 @@ def get_seller_ads(request):
             if ads:
                 return JsonResponse({'ads': ads}, status=200)
             else:
-                return JsonResponse({'message': 'No ads found for this seller.'}, status=404)
+                # Return an empty list when no ads are found
+                return JsonResponse({'ads': []}, status=200)
 
         except Exception as e:
             print(e)
@@ -332,6 +331,7 @@ def delete_ad(request, ad_id):
         try:
             with get_connection() as conn:
                 with conn.cursor() as cursor:
+                    # Delete the ad from the Ad table
                     cursor.execute("""
                         DELETE FROM Ad
                         WHERE ad_id = %s
