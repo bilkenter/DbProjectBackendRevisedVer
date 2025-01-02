@@ -119,66 +119,52 @@ def login(request):
 def create_vehicle_ad(request):
     if request.method == 'POST':
         try:
+            # Parse incoming data from JSON
             data = json.loads(request.body)
-            brand = data['brand']
-            model_name = data['model_name']
-            year = data['year']
-            mileage = data['mileage']
-            motor_power = data['motor_power']
-            fuel_type = data['fuel_type']
-            fuel_tank_capacity = data['fuel_tank_capacity']
-            transmission_type = data['transmission_type']
-            body_type = data['body_type']
-            color = data['color']
-            price = data['price']
-            location = data['location']
-            description = data['description']
-            user_id = data['user_id']  # The logged-in seller's user_id
-            vehicle_type = data['vehicle_type']  # The type of vehicle: 'Car', 'Motorcycle', or 'Van'
-            
+            print(f"Received Data: {data}")
+
+            # Extracting the values from the parsed data
+            brand = data.get('brand')
+            model_name = data.get('model_name')
+            year = data.get('year')
+            mileage = data.get('mileage')
+            motor_power = data.get('motor_power')
+            fuel_type = data.get('fuel_type')
+            fuel_tank_capacity = data.get('fuel_tank_capacity')
+            transmission_type = data.get('transmission_type')
+            body_type = data.get('body_type')
+            color = data.get('color')
+            price = data.get('price')
+            location = data.get('location')
+            description = data.get('description')
+            user_id = data.get('user_id')
+            vehicle_type = data.get('vehicle_type')
+
             # Validate required fields
             if not all([brand, model_name, year, mileage, motor_power, price, location, description, vehicle_type]):
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
-            
-            # Insert vehicle into Vehicle table
+
+            # Proceed with inserting the data into the database
+            # Insert into Vehicle table
             with get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("""
-                        INSERT INTO Vehicle (brand, model_name, year, mileage, motor_power, fuel_type, fuel_tank_capacity, 
+                        INSERT INTO Vehicle (brand, model_name, year, mileage, motor_power, fuel_type, fuel_tank_capacity,
                                              transmission_type, body_type, color)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING vehicle_id;
                     """, (brand, model_name, year, mileage, motor_power, fuel_type, fuel_tank_capacity, transmission_type,
                           body_type, color))
                     vehicle_id = cursor.fetchone()[0]
-                    
+
                     # Insert additional vehicle data depending on vehicle type
                     if vehicle_type == "Car":
-                        number_of_doors = data['number_of_doors']
+                        num_of_doors = data.get('numOfDoors')
                         cursor.execute("""
                             INSERT INTO Car (vehicle_id, number_of_doors)
                             VALUES (%s, %s);
-                        """, (vehicle_id, number_of_doors))
-                    elif vehicle_type == "Motorcycle":
-                        wheel_number = data['wheel_number']
-                        cylinder_volume = data['cylinder_volume']
-                        has_basket = data['has_basket']
-                        cursor.execute("""
-                            INSERT INTO Motorcycle (vehicle_id, wheel_number, cylinder_volume, has_basket)
-                            VALUES (%s, %s, %s, %s);
-                        """, (vehicle_id, wheel_number, cylinder_volume, has_basket))
-                    elif vehicle_type == "Van":
-                        seat_number = data['seat_number']
-                        roof_height = data['roof_height']
-                        cabin_space = data['cabin_space']
-                        has_sliding_door = data['has_sliding_door']
-                        cursor.execute("""
-                            INSERT INTO Van (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door)
-                            VALUES (%s, %s, %s, %s, %s);
-                        """, (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door))
-                    else:
-                        return JsonResponse({'error': 'Invalid vehicle type'}, status=400)
-                    
+                        """, (vehicle_id, num_of_doors))
+
                     # Insert ad into Ad table
                     cursor.execute("""
                         INSERT INTO Ad (user_id, vehicle_id, price, location, description)
@@ -229,7 +215,8 @@ def get_all_cars(request):
             if cars:
                 return JsonResponse({'cars': cars}, status=200)
             else:
-                return JsonResponse({'message': 'No cars found'}, status=404)
+                return JsonResponse({'cars': []}, status=200)  # Return empty array
+
 
         except Exception as e:
             print(e)
@@ -276,3 +263,86 @@ def get_all_users(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+
+@csrf_exempt
+def get_user_data(request):
+    if request.method == 'GET':
+        try:
+            user_id = request.GET.get('user_id')  # Retrieve user_id from query parameter
+            
+            # Handle missing user_id
+            if not user_id:
+                return JsonResponse({'error': 'User ID is required'}, status=400)
+
+            # Fetch user data from the database
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT username, email, user_id
+                        FROM UserAccount
+                        WHERE user_id = %s;
+                    """, (user_id,))
+                    user = cursor.fetchone()
+
+            if user:
+                return JsonResponse({'user': user}, status=200)
+            else:
+                return JsonResponse({'error': 'User not found'}, status=404)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def get_seller_ads(request):
+    
+    if request.method == 'GET':
+        try:
+            # Get user_id from the query parameters
+            user_id = request.GET.get('user_id')  # Use GET to extract the query parameter
+            print(f"Received Data: {user_id}")
+
+            if not user_id:
+                return JsonResponse({'error': 'User ID is required'}, status=400)
+
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Query the seller_ads view to get the seller's ads
+                    cursor.execute("""
+                        SELECT * FROM seller_ads
+                        WHERE seller_id = %s;
+                    """, (user_id,))
+                    ads = cursor.fetchall()
+                    print(f"Received Data: {ads}")
+
+            if ads:
+                return JsonResponse({'ads': ads}, status=200)
+            else:
+                return JsonResponse({'message': 'No ads found for this seller.'}, status=404)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def delete_ad(request, ad_id):
+    if request.method == 'DELETE':
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        DELETE FROM Ad
+                        WHERE ad_id = %s
+                        RETURNING ad_id;
+                    """, (ad_id,))
+                    deleted_ad = cursor.fetchone()
+
+            if deleted_ad:
+                return JsonResponse({'message': 'Ad deleted successfully'}, status=200)
+            else:
+                return JsonResponse({'error': 'Ad not found'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)

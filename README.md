@@ -82,3 +82,21 @@ check db:
 docker exec -it postgres psql -U youruser -d yourdatabase
 
 to list: \l or \du 
+
+dummy create vehicle ad:
+{
+  "brand": "Toyota",
+  "model_name": "Corolla",
+  "year": 2020,
+  "mileage": 15000,
+  "motor_power": 130.5,
+  "fuel_type": "Petrol",
+  "fuel_tank_capacity": 50.0,
+  "transmission_type": "Automatic",
+  "body_type": "Sedan",
+  "color": "Red",
+  "price": 20000,
+  "location": "New York",
+  "description": "A well-maintained Toyota Corolla with low mileage.",
+  "user_id": 1
+}
