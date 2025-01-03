@@ -180,6 +180,7 @@ def create_vehicle_ad(request):
                             INSERT INTO Car (vehicle_id, number_of_doors)
                             VALUES (%s, %s);
                         """, (vehicle_id, num_of_doors))
+                        
 
                     elif vehicle_type == "Motorcycle":
                         wheel_number = vehicle_data.get('wheelNumber')
@@ -488,3 +489,88 @@ def get_car_details(request, ad_id):
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def make_offer(request):
+    if request.method == 'POST':
+        try:
+            # Parse request data
+            data = json.loads(request.body)
+            ad_id = data.get('ad_id')
+            offered_price = data.get('offered_price')
+            user_id = data.get('user_id')
+
+            # Validate required fields
+            if not all([ad_id, offered_price, user_id]):
+                return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+            # Validate offered_price
+            if offered_price <= 0:
+                return JsonResponse({'error': 'Offered price must be greater than 0'}, status=400)
+
+            # Insert offer into PriceOffer table
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO PriceOffer (user_id, ad_id, offered_price)
+                        VALUES (%s, %s, %s)
+                        RETURNING offer_id;
+                    """, (user_id, ad_id, offered_price))
+
+                    offer_id = cursor.fetchone()[0]
+
+                    # Commit the transaction
+                    conn.commit()
+
+            return JsonResponse({'message': 'Offer made successfully', 'offer_id': offer_id}, status=201)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+
+@csrf_exempt
+def get_incoming_offers(request):
+    if request.method == 'GET':
+        try:
+            # Retrieve seller_id from query parameters
+            seller_id = request.GET.get('seller_id')  # seller_id is passed as a query parameter
+
+            # Check if seller_id is provided
+            if not seller_id:
+                return JsonResponse({'error': 'seller_id is required'}, status=400)
+
+            # Query the incoming_offers view for all offers associated with this seller
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT
+                            offer_id,
+                            buyer_id,
+                            buyer_username,
+                            offered_price,
+                            status,
+                            offer_date,
+                            ad_id,
+                            seller_id,
+                            brand,
+                            model_name,
+                            year
+                        FROM incoming_offers
+                        WHERE seller_id = %s;
+                    """, (seller_id,))
+                    offers = cursor.fetchall()
+
+            if offers:
+                return JsonResponse({'offers': offers}, status=200)
+            else:
+                return JsonResponse({'offers': []}, status=200)  # No offers found
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
