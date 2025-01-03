@@ -13,7 +13,8 @@ SELECT
   a.user_id AS seller_id, --for filtering
   v.brand,
   v.model_name,
-  v.year
+  v.year,
+  v.vehicle_id
 FROM
   PriceOffer o
 JOIN

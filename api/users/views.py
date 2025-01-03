@@ -1,4 +1,3 @@
-# users/views.py
 from psycopg2.extras import RealDictCursor
 import bcrypt
 from django.http import JsonResponse
@@ -6,8 +5,8 @@ from django.views.decorators.csrf import csrf_exempt
 from .db_utils import get_connection
 import json
 
-import psycopg2  # Import psycopg2 for database interaction
-from psycopg2 import Binary  # Import Binary for handling binary data
+import psycopg2 
+from psycopg2 import Binary
 
 
 @csrf_exempt
@@ -18,36 +17,29 @@ def signup(request):
             username = data['username']
             password = data['password']
             email = data['email']
-            #phone_number = data['phone_number']
             user_type = data['userType']
             notificationPreference = data['notificationPreference']
 
-            # Validate inputs
             """if not username or not password or not email or not phone_number or not user_type or not notification_preferences:"""
             if not username or not password or not email or not user_type or not notificationPreference:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-            # Hash the password using bcrypt
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-            # Insert user into the database
             with get_connection() as conn:
                 with conn.cursor() as cursor:
-                    # Insert into UserAccount table
                     cursor.execute("""
                         INSERT INTO UserAccount (username, pass, email)
                         VALUES (%s, %s, %s)
                         RETURNING user_id;
-                    """, (username, hashed_password.decode('utf-8'), email))  # store the hashed password as string
+                    """, (username, hashed_password.decode('utf-8'), email)) 
                     new_user_id = cursor.fetchone()[0]
 
-                    # Insert into AppUser table for all users
                     cursor.execute("""
                         INSERT INTO AppUser (user_id, notification_preference)
                         VALUES (%s, %s);
                     """, (new_user_id, notificationPreference))
 
-                    # Add user type relationship
                     if user_type == "Admin":
                         cursor.execute("""
                             INSERT INTO AdminAccount (user_id) 
@@ -89,11 +81,9 @@ def login(request):
             email = data['email']
             password = data['password']
 
-            # Validate inputs
             if not email or not password:
                 return JsonResponse({'error': 'Missing username or password'}, status=400)
 
-            # Check credentials
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
@@ -104,7 +94,6 @@ def login(request):
                     user = cursor.fetchone()
 
             if user:
-                # Verify the password
                 if bcrypt.checkpw(password.encode('utf-8'), user['pass'].encode('utf-8')):
                     return JsonResponse({'message': 'Login successful', 'user': user}, status=200)
                 else:
@@ -135,11 +124,9 @@ from .db_utils import get_connection
 def create_vehicle_ad(request):
     if request.method == 'POST':
         try:
-            # Get vehicle_data from the form data (not JSON)
-            vehicle_data = json.loads(request.POST.get('vehicle_data'))  # vehicle_data should be passed as a string
+            vehicle_data = json.loads(request.POST.get('vehicle_data')) 
             print(f"Received Data: {vehicle_data}")
 
-            # Extracting the values from the parsed data
             brand = vehicle_data.get('brand')
             model_name = vehicle_data.get('model_name')
             year = vehicle_data.get('year')
@@ -156,12 +143,9 @@ def create_vehicle_ad(request):
             user_id = vehicle_data.get('user_id')
             vehicle_type = vehicle_data.get('vehicle_type')
 
-            # Validate required fields
             if not all([brand, model_name, year, mileage, motor_power, price, location, description, vehicle_type]):
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-            # Proceed with inserting the data into the database
-            # Insert into Vehicle table
             with get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("""
@@ -173,7 +157,6 @@ def create_vehicle_ad(request):
                           body_type, color, vehicle_type))
                     vehicle_id = cursor.fetchone()[0]
 
-                    # Insert additional vehicle data depending on vehicle type
                     if vehicle_type == "Car":
                         num_of_doors = vehicle_data.get('numOfDoors')
                         cursor.execute("""
@@ -201,7 +184,6 @@ def create_vehicle_ad(request):
                             VALUES (%s, %s, %s, %s, %s);
                         """, (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door))
 
-                    # Insert ad into Ad table
                     cursor.execute("""
                         INSERT INTO Ad (user_id, vehicle_id, price, location, description)
                         VALUES (%s, %s, %s, %s, %s)
@@ -209,52 +191,42 @@ def create_vehicle_ad(request):
                     """, (user_id, vehicle_id, price, location, description))
                     ad_id = cursor.fetchone()[0]
 
-                    # Check if any files are uploaded
                     images = request.FILES.getlist('images')
                     image_urls = []
                     if images:
-                        print(f"Found {len(images)} image(s).")  # Debugging log to check image files
+                        print(f"Found {len(images)} image(s).")  
 
                         for image in images:
-                            # Read the image as binary data
                             image_data = image.read()
-                            print(f"Image Size: {len(image_data)} bytes")  # Debugging log for image size
+                            print(f"Image Size: {len(image_data)} bytes") 
 
-                            # Generate a unique name for each image to avoid conflicts
                             image_name = f"vehicle_{ad_id}_{image.name}"
-                            image_path = default_storage.save(f'images/{image_name}', ContentFile(image_data))  # Save the image to storage
-                            image_url = f"/media/{image_path}"  # URL path for the image
+                            image_path = default_storage.save(f'images/{image_name}', ContentFile(image_data))
+                            image_url = f"/media/{image_path}"  
 
-                            # Insert both the image data and the image URL into the Image table
                             cursor.execute("""
                                 INSERT INTO Image (ad_id, image_data, image_url)
                                 VALUES (%s, %s, %s);
-                            """, (ad_id, Binary(image_data), image_url))  # Insert both binary data and the URL
+                            """, (ad_id, Binary(image_data), image_url)) 
 
-                            # Collect the URLs to return
                             image_urls.append(image_url)
 
-                     # Check if expert report PDF is uploaded
-                    pdf_file = request.FILES.get('pdf_file')  # Expect a file input with the name 'pdf_file'
+                    pdf_file = request.FILES.get('pdf_file') 
                     if pdf_file:
-                        # Read the PDF file as binary data
                         pdf_data = pdf_file.read()
 
-                        # Generate a unique file name for the PDF file
                         pdf_filename = f"expert_report_{ad_id}.pdf"
-                        pdf_path = default_storage.save(f'expert_reports/{pdf_filename}', ContentFile(pdf_data))  # Save the file to storage
-                        pdf_url = f"/media/{pdf_path}"  # URL path for the PDF
-                        # Insert the expert report into the ExpertReport table
+                        pdf_path = default_storage.save(f'expert_reports/{pdf_filename}', ContentFile(pdf_data))  
+                        pdf_url = f"/media/{pdf_path}"
                         cursor.execute("""
                             INSERT INTO ExpertReport (ad_id, expert_name, pdf_data, pdf_url)
                             VALUES (%s, %s, %s, %s)
                             RETURNING report_id;
                         """, (ad_id, 'expert_name', Binary(pdf_data), pdf_url))
-                        report_id = cursor.fetchone()[0]  # Get the inserted report_id
+                        report_id = cursor.fetchone()[0] 
 
-                    conn.commit()  # Commit transaction
+                    conn.commit()  
 
-            # Return the response with success message and image URLs
             return JsonResponse({'message': 'Vehicle ad created successfully', 'ad_id': ad_id, 'image_urls': image_urls, 'pdf_url': pdf_url}, status=201)
 
         except Exception as e:
@@ -267,7 +239,6 @@ def create_vehicle_ad(request):
 def get_all_cars(request):
     if request.method == 'GET':
         try:
-            # Query the active_listings view to get car ads
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
@@ -295,7 +266,7 @@ def get_all_cars(request):
             if cars:
                 return JsonResponse({'cars': cars}, status=200)
             else:
-                return JsonResponse({'cars': []}, status=200)  # Return empty array if no cars
+                return JsonResponse({'cars': []}, status=200)
 
         except Exception as e:
             print(e)
@@ -308,7 +279,6 @@ def get_all_users(request):
         try:
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                    # Query to get all users with their type, notification preference, and if they are a seller, their car IDs
                     cursor.execute("""
                         SELECT u.user_id, u.username, u.email, a.notification_preference, 
                                CASE 
@@ -346,13 +316,11 @@ def get_all_users(request):
 def get_user_data(request):
     if request.method == 'GET':
         try:
-            user_id = request.GET.get('user_id')  # Retrieve user_id from query parameter
+            user_id = request.GET.get('user_id') 
             
-            # Handle missing user_id
             if not user_id:
                 return JsonResponse({'error': 'User ID is required'}, status=400)
 
-            # Fetch user data along with user type from the database
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
@@ -386,8 +354,7 @@ def get_user_data(request):
 def get_seller_ads(request):
     if request.method == 'GET':
         try:
-            # Get user_id from the query parameters
-            user_id = request.GET.get('user_id')  # Use GET to extract the query parameter
+            user_id = request.GET.get('user_id') 
             print(f"Received Data: {user_id}")
 
             if not user_id:
@@ -395,7 +362,6 @@ def get_seller_ads(request):
 
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                    # Query the seller_ads view to get the seller's ads
                     cursor.execute("""
                         SELECT * FROM seller_ads
                         WHERE seller_id = %s;
@@ -406,7 +372,6 @@ def get_seller_ads(request):
             if ads:
                 return JsonResponse({'ads': ads}, status=200)
             else:
-                # Return an empty list when no ads are found
                 return JsonResponse({'ads': []}, status=200)
 
         except Exception as e:
@@ -419,7 +384,6 @@ def delete_ad(request, ad_id):
         try:
             with get_connection() as conn:
                 with conn.cursor() as cursor:
-                    # Delete the ad from the Ad table
                     cursor.execute("""
                         DELETE FROM Ad
                         WHERE ad_id = %s
@@ -443,7 +407,6 @@ from psycopg2.extras import RealDictCursor
 def get_car_details(request, ad_id):
     if request.method == 'GET':
         try:
-            # Fetch car details from the active_listings view
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
@@ -483,7 +446,7 @@ def get_car_details(request, ad_id):
                     car = cursor.fetchone()
 
             if car:
-                return JsonResponse(car, status=200)  # Return the car details including image_urls
+                return JsonResponse(car, status=200) 
             else:
                 return JsonResponse({'error': 'Car not found or unavailable'}, status=404)
 
@@ -494,21 +457,17 @@ def get_car_details(request, ad_id):
 def make_offer(request):
     if request.method == 'POST':
         try:
-            # Parse request data
             data = json.loads(request.body)
             ad_id = data.get('ad_id')
             offered_price = data.get('offered_price')
             user_id = data.get('user_id')
 
-            # Validate required fields
             if not all([ad_id, offered_price, user_id]):
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-            # Validate offered_price
             if offered_price <= 0:
                 return JsonResponse({'error': 'Offered price must be greater than 0'}, status=400)
 
-            # Insert offer into PriceOffer table
             with get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("""
@@ -519,7 +478,6 @@ def make_offer(request):
 
                     offer_id = cursor.fetchone()[0]
 
-                    # Commit the transaction
                     conn.commit()
 
             return JsonResponse({'message': 'Offer made successfully', 'offer_id': offer_id}, status=201)
@@ -535,14 +493,11 @@ def make_offer(request):
 def get_incoming_offers(request):
     if request.method == 'GET':
         try:
-            # Retrieve seller_id from query parameters
-            seller_id = request.GET.get('seller_id')  # seller_id is passed as a query parameter
+            seller_id = request.GET.get('seller_id')  
 
-            # Check if seller_id is provided
             if not seller_id:
                 return JsonResponse({'error': 'seller_id is required'}, status=400)
 
-            # Query the incoming_offers view for all offers associated with this seller
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
@@ -566,7 +521,7 @@ def get_incoming_offers(request):
             if offers:
                 return JsonResponse({'offers': offers}, status=200)
             else:
-                return JsonResponse({'offers': []}, status=200)  # No offers found
+                return JsonResponse({'offers': []}, status=200) 
 
         except Exception as e:
             print(e)
@@ -574,3 +529,121 @@ def get_incoming_offers(request):
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
 
+@csrf_exempt
+def get_buyer_offers(request):
+    if request.method == 'GET':
+        try:
+            buyer_id = request.GET.get('buyer_id') 
+
+            if not buyer_id:
+                return JsonResponse({'error': 'buyer_id is required'}, status=400)
+
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT
+                            offer_id,
+                            buyer_id,
+                            buyer_username,
+                            offered_price,
+                            status,
+                            offer_date,
+                            ad_id,
+                            seller_id,
+                            brand,
+                            model_name,
+                            year
+                        FROM incoming_offers
+                        WHERE buyer_id = %s;
+                    """, (buyer_id,))
+                    offers = cursor.fetchall()
+
+            if offers:
+                return JsonResponse({'offers': offers}, status=200)
+            else:
+                return JsonResponse({'offers': []}, status=200) 
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+@csrf_exempt
+def accept_reject_offer(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            offer_id = data.get('offer_id')
+            action = data.get('action') 
+            user_id = data.get('user_id') 
+
+            if not all([offer_id, action, user_id]):
+                return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+            if action not in ['accepted', 'rejected']:
+                return JsonResponse({'error': 'Invalid action, should be accepted or rejected'}, status=400)
+
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT o.offer_id, o.user_id AS buyer_id, o.ad_id, o.offered_price, o.offer_status, o.offer_date,
+                               a.vehicle_id, a.user_id AS seller_id
+                        FROM PriceOffer o
+                        JOIN Ad a ON o.ad_id = a.ad_id
+                        WHERE o.offer_id = %s AND a.user_id = %s;  -- ensure the ad belongs to the seller
+                    """, (offer_id, user_id))
+                    offer = cursor.fetchone()
+
+            if not offer:
+                return JsonResponse({'error': 'Offer not found or you are not the seller for this ad'}, status=404)
+
+            if action == 'accepted':
+                with get_connection() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute("""
+                            UPDATE PriceOffer
+                            SET offer_status = 'rejected'
+                            WHERE ad_id = %s AND offer_id != %s;
+                        """, (offer['ad_id'], offer_id))
+
+                        cursor.execute("""
+                            UPDATE PriceOffer
+                            SET offer_status = 'accepted'
+                            WHERE offer_id = %s;
+                        """, (offer_id,))
+
+                        cursor.execute("""
+                            INSERT INTO Transact (offer_id)
+                            VALUES (%s)
+                            RETURNING transaction_id;
+
+                        """, (offer_id,))
+
+
+                        transaction_id = cursor.fetchone()[0]
+
+                        conn.commit()
+
+                return JsonResponse({
+                    'message': 'Offer accepted successfully',
+                    'transaction_id': transaction_id
+                }, status=200)
+
+            elif action == 'rejected':
+                with get_connection() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute("""
+                            UPDATE PriceOffer
+                            SET offer_status = 'rejected'
+                            WHERE offer_id = %s;
+                        """, (offer_id,))
+                        conn.commit()
+
+                return JsonResponse({'message': 'Offer rejected successfully'}, status=200)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)

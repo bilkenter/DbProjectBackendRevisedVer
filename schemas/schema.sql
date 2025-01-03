@@ -246,12 +246,12 @@ CREATE TABLE IF NOT EXISTS Transact (
     transaction_id SERIAL,
     offer_id INT NOT NULL,
     transaction_date DATE DEFAULT CURRENT_TIMESTAMP,
-    receiver_card_no VARCHAR(19) NOT NULL,
-    sender_card_no VARCHAR(19) NOT NULL,
+    --receiver_card_no VARCHAR(19) NOT NULL,
+    --sender_card_no VARCHAR(19) NOT NULL,
     PRIMARY KEY (transaction_id),
     FOREIGN KEY (offer_id) REFERENCES PriceOffer(offer_id) ON DELETE RESTRICT,
-    FOREIGN KEY (receiver_card_no) REFERENCES BankAccount(card_no) ON DELETE RESTRICT,
-    FOREIGN KEY (sender_card_no) REFERENCES BankAccount(card_no) ON DELETE RESTRICT
+    --FOREIGN KEY (receiver_card_no) REFERENCES BankAccount(card_no) ON DELETE RESTRICT,
+    --FOREIGN KEY (sender_card_no) REFERENCES BankAccount(card_no) ON DELETE RESTRICT
 );
 
 /*

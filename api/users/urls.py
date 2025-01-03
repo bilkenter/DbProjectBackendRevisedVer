@@ -16,5 +16,7 @@ urlpatterns = [
     path('vehicle/<int:ad_id>/', views.get_car_details, name='get_car_details'),
     path('make_offer/', views.make_offer, name='make_offer'),
     path('get_incoming_offers/', views.get_incoming_offers, name='get_incoming_offers'),
-     
+    path('get_buyer_offers/', views.get_buyer_offers, name='get_buyer_offers'),
+    path('accept_reject_offer/', views.accept_reject_offer, name='accept_reject_offer'),
+
 ]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
