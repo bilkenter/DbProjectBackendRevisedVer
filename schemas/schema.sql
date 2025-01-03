@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS Moderator (
     FOREIGN KEY (user_id) REFERENCES UserAccount(user_id) ON DELETE CASCADE
 );
 
+DO $$ BEGIN
+   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_type') THEN
+       CREATE TYPE vehicle_types AS ENUM ('Car', 'Van', 'Motorcycle');
+   END IF;
+END $$;
 /*
 Vehicle has relation with:
   Ad: One Ad can only feature one Vehicle
@@ -88,6 +93,7 @@ CREATE TABLE IF NOT EXISTS Vehicle(
   transmission_type VARCHAR(20),
   body_type VARCHAR(20),
   color VARCHAR(20),
+  vehicle_type vehicle_types NOT NULL,
   PRIMARY KEY (vehicle_id)
 );
 
@@ -315,6 +321,8 @@ CREATE TABLE IF NOT EXISTS ExpertReport(
   ad_id INT NOT NULL,
   report_date DATE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expert_name VARCHAR(20) NOT NULL,
+  pdf_data BYTEA,  -- Store PDF data
+  pdf_url VARCHAR(255),  -- URL of the stored PDF file
   PRIMARY KEY (ad_id, report_id),
   FOREIGN KEY (ad_id) REFERENCES Ad(ad_id)
 );

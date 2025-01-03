@@ -1,4 +1,3 @@
--- Primary view for sellers, buyers, and admins to see active listings
 CREATE OR REPLACE VIEW active_listings AS
 SELECT
   a.ad_id,
@@ -20,15 +19,11 @@ SELECT
   a.description,
   -- Convert the BYTEA image data to base64 and use it
   COALESCE(array_agg('data:image/jpeg;base64,' || encode(i.image_data, 'base64')), '{}'::text[]) AS image_urls,
+  'data:expert_reports/pdf;base64,' || encode(erp.pdf_data, 'base64') AS pdf,
   a.posting_date,
   ua.username AS seller_name,
   ua.email AS seller_email,
-  CASE
-    WHEN c.vehicle_id IS NOT NULL THEN 'Car'
-    WHEN m.vehicle_id IS NOT NULL THEN 'Motorcycle'
-    WHEN va.vehicle_id IS NOT NULL THEN 'Van'
-    ELSE 'Unknown'
-  END AS vehicle_type,
+  v.vehicle_type,
   c.number_of_doors,
   m.wheel_number,
   m.cylinder_volume,
@@ -60,8 +55,12 @@ JOIN
 JOIN
   UserAccount ua
     ON au.user_id = ua.user_id
+LEFT JOIN
+  ExpertReport erp
+    ON erp.ad_id = a.ad_id
 WHERE
   a.status = 'available'
 GROUP BY
-  a.ad_id, a.user_id, v.brand, v.model_name, v.year, a.price, a.location, v.mileage,
-  v.motor_power, v.fuel_type, v.transmission_type, v.body_type, v.color, a.description, a.posting_date;
+  a.ad_id, a.user_id, v.brand, v.vehicle_id, v.model_name, v.year, a.price, a.location, v.mileage,
+  v.motor_power, v.fuel_type, v.transmission_type, v.body_type, v.color, a.description, a.posting_date, ua.username, ua.email, 
+  c.vehicle_id, m.vehicle_id, va.vehicle_id, erp.pdf_data, v.vehicle_type;

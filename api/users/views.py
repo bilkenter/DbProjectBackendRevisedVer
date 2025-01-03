@@ -166,11 +166,11 @@ def create_vehicle_ad(request):
                 with conn.cursor() as cursor:
                     cursor.execute("""
                         INSERT INTO Vehicle (brand, model_name, year, mileage, motor_power, fuel_type, fuel_tank_capacity,
-                                             transmission_type, body_type, color)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                             transmission_type, body_type, color, vehicle_type)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING vehicle_id;
                     """, (brand, model_name, year, mileage, motor_power, fuel_type, fuel_tank_capacity, transmission_type,
-                          body_type, color))
+                          body_type, color, vehicle_type))
                     vehicle_id = cursor.fetchone()[0]
 
                     # Insert additional vehicle data depending on vehicle type
@@ -233,17 +233,35 @@ def create_vehicle_ad(request):
                             # Collect the URLs to return
                             image_urls.append(image_url)
 
+                     # Check if expert report PDF is uploaded
+                    pdf_file = request.FILES.get('pdf_file')  # Expect a file input with the name 'pdf_file'
+                    if pdf_file:
+                        # Read the PDF file as binary data
+                        pdf_data = pdf_file.read()
+
+                        # Generate a unique file name for the PDF file
+                        pdf_filename = f"expert_report_{ad_id}.pdf"
+                        pdf_path = default_storage.save(f'expert_reports/{pdf_filename}', ContentFile(pdf_data))  # Save the file to storage
+                        pdf_url = f"/media/{pdf_path}"  # URL path for the PDF
+                        # Insert the expert report into the ExpertReport table
+                        cursor.execute("""
+                            INSERT INTO ExpertReport (ad_id, expert_name, pdf_data, pdf_url)
+                            VALUES (%s, %s, %s, %s)
+                            RETURNING report_id;
+                        """, (ad_id, 'expert_name', Binary(pdf_data), pdf_url))
+                        report_id = cursor.fetchone()[0]  # Get the inserted report_id
+
                     conn.commit()  # Commit transaction
 
-
             # Return the response with success message and image URLs
-            return JsonResponse({'message': 'Vehicle ad created successfully', 'ad_id': ad_id, 'image_urls': image_urls}, status=201)
+            return JsonResponse({'message': 'Vehicle ad created successfully', 'ad_id': ad_id, 'image_urls': image_urls, 'pdf_url': pdf_url}, status=201)
 
         except Exception as e:
             print(e)
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
 @csrf_exempt
 def get_all_cars(request):
     if request.method == 'GET':
@@ -431,6 +449,8 @@ def get_car_details(request, ad_id):
                         SELECT
                             ad_id,
                             seller_id,
+                            seller_name,
+                            seller_email,
                             brand,
                             model_name,
                             year,
@@ -439,12 +459,23 @@ def get_car_details(request, ad_id):
                             mileage,
                             motor_power,
                             fuel_type,
+                            fuel_tank_capacity,
                             transmission_type,
                             body_type,
                             color,
                             description,
                             image_urls,
-                            posting_date
+                            posting_date,
+                            vehicle_type,
+                            number_of_doors,
+                            wheel_number,
+                            cylinder_volume,
+                            has_basket,
+                            seat_number,
+                            roof_height,
+                            cabin_space,
+                            has_sliding_door,
+                            pdf
                         FROM active_listings
                         WHERE ad_id = %s;
                     """, (ad_id,))
