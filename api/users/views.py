@@ -8,7 +8,13 @@ import json
 
 import psycopg2  # Import psycopg2 for database interaction
 from psycopg2 import Binary  # Import Binary for handling binary data
+from django.http import StreamingHttpResponse
+import time
+import threading
+from queue import Queue
 
+# Global dictionary to store message queues for each chat
+chat_queues = {}
 
 @csrf_exempt
 def signup(request):
@@ -573,4 +579,117 @@ def get_incoming_offers(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+@csrf_exempt
+def get_or_create_chat(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            car_id = data.get('carId')
+            buyer_id = data.get('currentUserId')
+            seller_id = data.get('sellerId')
+
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Check if chat exists
+                    cursor.execute("""
+                        SELECT chat_id FROM Chat
+                        WHERE car_id = %s AND buyer_id = %s AND seller_id = %s
+                    """, (car_id, buyer_id, seller_id))
+                    chat = cursor.fetchone()
+
+                    if not chat:
+                        # Create new chat
+                        cursor.execute("""
+                            INSERT INTO Chat (car_id, buyer_id, seller_id)
+                            VALUES (%s, %s, %s)
+                            RETURNING chat_id
+                        """, (car_id, buyer_id, seller_id))
+                        chat = cursor.fetchone()
+
+                    return JsonResponse({'chat_id': chat['chat_id']}, status=200)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_chat_messages(request, car_id):
+    if request.method == 'GET':
+        try:
+            user_id = request.GET.get('userId')
+            
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT 
+                            message_id as id,
+                            content,
+                            sender_id as "senderId",
+                            sender_name as "senderName",
+                            timestamp
+                        FROM chat_messages
+                        WHERE car_id = %s
+                        ORDER BY timestamp ASC
+                    """, (car_id,))
+                    messages = cursor.fetchall()
+
+                    return JsonResponse(messages, safe=False)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def send_message(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            car_id = data['carId']
+            content = data['content']
+            sender_id = data['senderId']
+            
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get chat_id
+                    cursor.execute("""
+                        SELECT chat_id FROM Chat WHERE car_id = %s
+                    """, (car_id,))
+                    chat = cursor.fetchone()
+                    
+                    if not chat:
+                        return JsonResponse({'error': 'Chat not found'}, status=404)
+
+                    # Insert message
+                    cursor.execute("""
+                        INSERT INTO Message (chat_id, sender_id, content)
+                        VALUES (%s, %s, %s)
+                        RETURNING message_id, timestamp
+                    """, (chat['chat_id'], sender_id, content))
+                    new_message = cursor.fetchone()
+
+                    # Notify connected clients
+                    if car_id in chat_queues:
+                        chat_queues[car_id].put(new_message)
+
+                    return JsonResponse({'message': 'Message sent successfully'}, status=201)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+def chat_stream(request, car_id):
+    def event_stream():
+        if car_id not in chat_queues:
+            chat_queues[car_id] = Queue()
+
+        while True:
+            try:
+                message = chat_queues[car_id].get(timeout=20)  # 20-second timeout
+                yield f"data: {json.dumps(message)}\n\n"
+            except:
+                yield "data: {}\n\n"  # Keep-alive packet
+            time.sleep(0.1)
+
+    return StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
 
