@@ -6,6 +6,10 @@ from django.views.decorators.csrf import csrf_exempt
 from .db_utils import get_connection
 import json
 
+import psycopg2  # Import psycopg2 for database interaction
+from psycopg2 import Binary  # Import Binary for handling binary data
+
+
 @csrf_exempt
 def signup(request):
     if request.method == 'POST':
@@ -114,31 +118,43 @@ def login(request):
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
 
+from django.core.files.uploadedfile import InMemoryUploadedFile
+import io
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from psycopg2 import Binary
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .db_utils import get_connection
 
 @csrf_exempt
 def create_vehicle_ad(request):
     if request.method == 'POST':
         try:
-            # Parse incoming data from JSON
-            data = json.loads(request.body)
-            print(f"Received Data: {data}")
+            # Get vehicle_data from the form data (not JSON)
+            vehicle_data = json.loads(request.POST.get('vehicle_data'))  # vehicle_data should be passed as a string
+            print(f"Received Data: {vehicle_data}")
 
             # Extracting the values from the parsed data
-            brand = data.get('brand')
-            model_name = data.get('model_name')
-            year = data.get('year')
-            mileage = data.get('mileage')
-            motor_power = data.get('motor_power')
-            fuel_type = data.get('fuel_type')
-            fuel_tank_capacity = data.get('fuel_tank_capacity')
-            transmission_type = data.get('transmission_type')
-            body_type = data.get('body_type')
-            color = data.get('color')
-            price = data.get('price')
-            location = data.get('location')
-            description = data.get('description')
-            user_id = data.get('user_id')
-            vehicle_type = data.get('vehicle_type')
+            brand = vehicle_data.get('brand')
+            model_name = vehicle_data.get('model_name')
+            year = vehicle_data.get('year')
+            mileage = vehicle_data.get('mileage')
+            motor_power = vehicle_data.get('motor_power')
+            fuel_type = vehicle_data.get('fuel_type')
+            fuel_tank_capacity = vehicle_data.get('fuel_tank_capacity')
+            transmission_type = vehicle_data.get('transmission_type')
+            body_type = vehicle_data.get('body_type')
+            color = vehicle_data.get('color')
+            price = vehicle_data.get('price')
+            location = vehicle_data.get('location')
+            description = vehicle_data.get('description')
+            user_id = vehicle_data.get('user_id')
+            vehicle_type = vehicle_data.get('vehicle_type')
 
             # Validate required fields
             if not all([brand, model_name, year, mileage, motor_power, price, location, description, vehicle_type]):
@@ -159,11 +175,30 @@ def create_vehicle_ad(request):
 
                     # Insert additional vehicle data depending on vehicle type
                     if vehicle_type == "Car":
-                        num_of_doors = data.get('numOfDoors')
+                        num_of_doors = vehicle_data.get('numOfDoors')
                         cursor.execute("""
                             INSERT INTO Car (vehicle_id, number_of_doors)
                             VALUES (%s, %s);
                         """, (vehicle_id, num_of_doors))
+
+                    elif vehicle_type == "Motorcycle":
+                        wheel_number = vehicle_data.get('wheelNumber')
+                        cylinder_volume = vehicle_data.get('cylinderVolume')
+                        has_basket = vehicle_data.get('hasBasket', False)
+                        cursor.execute("""
+                            INSERT INTO Motorcycle (vehicle_id, wheel_number, cylinder_volume, has_basket)
+                            VALUES (%s, %s, %s, %s);
+                        """, (vehicle_id, wheel_number, cylinder_volume, has_basket))
+
+                    elif vehicle_type == "Van":
+                        seat_number = vehicle_data.get('seatNumber')
+                        roof_height = vehicle_data.get('roofHeight')
+                        cabin_space = vehicle_data.get('cabinSpace')
+                        has_sliding_door = vehicle_data.get('hasSlidingDoor', False)
+                        cursor.execute("""
+                            INSERT INTO Van (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door)
+                            VALUES (%s, %s, %s, %s, %s);
+                        """, (vehicle_id, seat_number, roof_height, cabin_space, has_sliding_door))
 
                     # Insert ad into Ad table
                     cursor.execute("""
@@ -172,58 +207,82 @@ def create_vehicle_ad(request):
                         RETURNING ad_id;
                     """, (user_id, vehicle_id, price, location, description))
                     ad_id = cursor.fetchone()[0]
-                    conn.commit()
 
-            return JsonResponse({'message': 'Vehicle ad created successfully', 'ad_id': ad_id}, status=201)
+                    # Check if any files are uploaded
+                    images = request.FILES.getlist('images')
+                    image_urls = []
+                    if images:
+                        print(f"Found {len(images)} image(s).")  # Debugging log to check image files
+
+                        for image in images:
+                            # Read the image as binary data
+                            image_data = image.read()
+                            print(f"Image Size: {len(image_data)} bytes")  # Debugging log for image size
+
+                            # Generate a unique name for each image to avoid conflicts
+                            image_name = f"vehicle_{ad_id}_{image.name}"
+                            image_path = default_storage.save(f'images/{image_name}', ContentFile(image_data))  # Save the image to storage
+                            image_url = f"/media/{image_path}"  # URL path for the image
+
+                            # Insert both the image data and the image URL into the Image table
+                            cursor.execute("""
+                                INSERT INTO Image (ad_id, image_data, image_url)
+                                VALUES (%s, %s, %s);
+                            """, (ad_id, Binary(image_data), image_url))  # Insert both binary data and the URL
+
+                            # Collect the URLs to return
+                            image_urls.append(image_url)
+
+                    conn.commit()  # Commit transaction
+
+
+            # Return the response with success message and image URLs
+            return JsonResponse({'message': 'Vehicle ad created successfully', 'ad_id': ad_id, 'image_urls': image_urls}, status=201)
 
         except Exception as e:
             print(e)
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
-
 @csrf_exempt
 def get_all_cars(request):
     if request.method == 'GET':
         try:
-            # Query the database to get car ads
+            # Query the active_listings view to get car ads
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
                         SELECT
-                            ad.ad_id,
-                            ad.price,
-                            ad.location,
-                            ad.description,
-                            ad.posting_date,
-                            vehicle.brand,
-                            vehicle.model_name,
-                            vehicle.year,
-                            vehicle.mileage,
-                            vehicle.motor_power,
-                            vehicle.fuel_type,
-                            vehicle.fuel_tank_capacity,
-                            vehicle.transmission_type,
-                            vehicle.body_type,
-                            vehicle.color
-                        FROM Ad ad
-                        JOIN Vehicle vehicle ON ad.vehicle_id = vehicle.vehicle_id
-                        WHERE ad.status = 'available';
+                            ad_id,
+                            seller_id,
+                            brand,
+                            model_name,
+                            year,
+                            price,
+                            location,
+                            mileage,
+                            motor_power,
+                            fuel_type,
+                            transmission_type,
+                            body_type,
+                            color,
+                            description,
+                            image_urls,
+                            posting_date
+                        FROM active_listings
                     """)
                     cars = cursor.fetchall()
 
             if cars:
                 return JsonResponse({'cars': cars}, status=200)
             else:
-                return JsonResponse({'cars': []}, status=200)  # Return empty array
-
+                return JsonResponse({'cars': []}, status=200)  # Return empty array if no cars
 
         except Exception as e:
             print(e)
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
-
 @csrf_exempt
 def get_all_users(request):
     if request.method == 'GET':
@@ -361,38 +420,38 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .db_utils import get_connection
 from psycopg2.extras import RealDictCursor
-
 @csrf_exempt
 def get_car_details(request, ad_id):
     if request.method == 'GET':
         try:
+            # Fetch car details from the active_listings view
             with get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
                         SELECT
-                            ad.ad_id,
-                            ad.price,
-                            ad.location,
-                            ad.description,
-                            ad.posting_date,
-                            vehicle.brand,
-                            vehicle.model_name,
-                            vehicle.year,
-                            vehicle.mileage,
-                            vehicle.motor_power,
-                            vehicle.fuel_type,
-                            vehicle.fuel_tank_capacity,
-                            vehicle.transmission_type,
-                            vehicle.body_type,
-                            vehicle.color
-                        FROM Ad ad
-                        JOIN Vehicle vehicle ON ad.vehicle_id = vehicle.vehicle_id
-                        WHERE ad.ad_id = %s AND ad.status = 'available';
+                            ad_id,
+                            seller_id,
+                            brand,
+                            model_name,
+                            year,
+                            price,
+                            location,
+                            mileage,
+                            motor_power,
+                            fuel_type,
+                            transmission_type,
+                            body_type,
+                            color,
+                            description,
+                            image_urls,
+                            posting_date
+                        FROM active_listings
+                        WHERE ad_id = %s;
                     """, (ad_id,))
                     car = cursor.fetchone()
 
             if car:
-                return JsonResponse(car, status=200)
+                return JsonResponse(car, status=200)  # Return the car details including image_urls
             else:
                 return JsonResponse({'error': 'Car not found or unavailable'}, status=404)
 

@@ -100,3 +100,25 @@ dummy create vehicle ad:
   "description": "A well-maintained Toyota Corolla with low mileage.",
   "user_id": 1
 }
+
+motorcycle:
+{
+  "vehicle_type": "motorcycle",
+  "brand": "Yamaha",
+  "model_name": "YZF-R1",
+  "year": 2020,
+  "mileage": 1500,
+  "fuel_type": "Petrol",
+  "fuel_tank_capacity": 17,
+  "motor_power": 200,
+  "transmission_type": "Manual",
+  "body_type": "Sport",
+  "color": "Blue",
+  "location": "New York, NY",
+  "price": 12000,
+  "description": "A high-performance sport motorcycle with advanced technology and exceptional handling.",
+  "user_id": 1,  // Assuming user_id 1 is a Seller
+  "wheelNumber": 2,
+  "cylinderVolume": 998.5,
+  "hasBasket": false
+}

@@ -324,12 +324,12 @@ Image has relation with:
   Ad: Weak and Strong Entity, One Ad can contain many Images
 */
 CREATE TABLE IF NOT EXISTS Image(
-  image_id SERIAL,
+  image_id SERIAL PRIMARY KEY,
   ad_id INT NOT NULL,
-  url TEXT NOT NULL,
-  PRIMARY KEY (ad_id, image_id),
+  image_data BYTEA NOT NULL,
+  image_url VARCHAR(255),
   FOREIGN KEY (ad_id) REFERENCES Ad(ad_id)
-);
+); 
 
 /*
 BookmarkList has relation with:

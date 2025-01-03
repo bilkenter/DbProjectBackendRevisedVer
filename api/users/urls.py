@@ -1,6 +1,8 @@
 
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('signup/', views.signup, name='signup'),
@@ -11,5 +13,5 @@ urlpatterns = [
     path('get_seller_ads/', views.get_seller_ads, name='get_seller_ads'),  # Add this line
     path('delete_ad/<int:ad_id>/', views.delete_ad, name='delete_ad'),
     path('get_user_data/', views.get_user_data, name='get_user_data'),  # Add this line
-    path('car/<int:ad_id>/', views.get_car_details, name='get_car_details'),
-]
+    path('vehicle/<int:ad_id>/', views.get_car_details, name='get_car_details'),
+]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -98,6 +98,12 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+# settings.py
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '../media'
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB
+
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

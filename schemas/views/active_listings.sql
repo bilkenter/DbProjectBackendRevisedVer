@@ -1,11 +1,8 @@
---primary view for sellers and buyers but can also be used for admins
---buyer to see all active listings that are flagged available
---also for seller to see their active ads
---can also be used for admins to see all active listings
+-- Primary view for sellers, buyers, and admins to see active listings
 CREATE OR REPLACE VIEW active_listings AS
 SELECT
   a.ad_id,
-  a.user_id AS seller_id, --filtering when used for seller not buyer and admin
+  a.user_id AS seller_id,  -- Filtering when used for seller, not buyer and admin
   v.brand,
   v.model_name,
   v.year,
@@ -18,7 +15,8 @@ SELECT
   v.body_type,
   v.color,
   a.description,
-  i.url AS image_url,
+  -- Convert the BYTEA image data to base64 and use it
+  COALESCE(array_agg('data:image/jpeg;base64,' || encode(i.image_data, 'base64')), '{}'::text[]) AS image_urls,
   a.posting_date
 FROM
   Ad a
@@ -29,4 +27,7 @@ LEFT JOIN
   Image i
     ON a.ad_id = i.ad_id
 WHERE
-  a.status = 'available';
+  a.status = 'available'
+GROUP BY
+  a.ad_id, a.user_id, v.brand, v.model_name, v.year, a.price, a.location, v.mileage,
+  v.motor_power, v.fuel_type, v.transmission_type, v.body_type, v.color, a.description, a.posting_date;
