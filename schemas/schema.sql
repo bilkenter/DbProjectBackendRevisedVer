@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS Moderator (
 );
 
 DO $$ BEGIN
-   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_type') THEN
+   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vehicle_types') THEN
        CREATE TYPE vehicle_types AS ENUM ('Car', 'Van', 'Motorcycle');
    END IF;
 END $$;
